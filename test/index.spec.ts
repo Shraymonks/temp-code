@@ -15,20 +15,26 @@ describe('temp-code worker', () => {
       expect(await env.KV.get('code')).toBe('111111');
     });
     it('responds 403 with incorrect auth', async () => {
-      const response = await SELF.fetch('https://example.com/?auth=wrong');
+      const response = await SELF.fetch('https://example.com', {
+        headers: { Authorization: 'wrong' },
+      });
       expect(response.status).toBe(403);
       expect(await response.text()).toBe('');
       expect(await env.KV.get('code')).toBe('111111');
     });
     it('responds 404 if no code', async () => {
       await env.KV.delete('code');
-      const response = await SELF.fetch('https://example.com/?auth=secret');
+      const response = await SELF.fetch('https://example.com', {
+        headers: { Authorization: 'secret' },
+      });
       expect(response.status).toBe(404);
       expect(await response.text()).toBe('');
       expect(await env.KV.get('code')).toBeNull();
     });
     it('responds 200 with correct auth', async () => {
-      const response = await SELF.fetch('https://example.com/?auth=secret');
+      const response = await SELF.fetch('https://example.com', {
+        headers: { Authorization: 'secret' },
+      });
       expect(response.status).toBe(200);
       expect(await response.text()).toBe('111111');
       expect(await env.KV.get('code')).toBe('111111');
@@ -36,14 +42,6 @@ describe('temp-code worker', () => {
   });
 
   describe('PUT', () => {
-    it('responds 400 with no body', async () => {
-      const response = await SELF.fetch('https://example.com', {
-        method: 'PUT',
-      });
-      expect(response.status).toBe(400);
-      expect(await response.text()).toBe('');
-      expect(await env.KV.get('code')).toBe('111111');
-    });
     it('responds 403 with no auth', async () => {
       const response = await SELF.fetch('https://example.com', {
         body: JSON.stringify({ code: '123456' }),
@@ -55,22 +53,27 @@ describe('temp-code worker', () => {
     });
     it('responds 403 with incorrect auth', async () => {
       const response = await SELF.fetch('https://example.com', {
-        body: JSON.stringify({
-          auth: 'wrong',
-          code: '123456',
-        }),
+        body: JSON.stringify({ code: '123456' }),
+        headers: { Authorization: 'wrong' },
         method: 'PUT',
       });
       expect(response.status).toBe(403);
       expect(await response.text()).toBe('');
       expect(await env.KV.get('code')).toBe('111111');
     });
+    it('responds 400 with no body', async () => {
+      const response = await SELF.fetch('https://example.com', {
+        headers: { Authorization: 'secret' },
+        method: 'PUT',
+      });
+      expect(response.status).toBe(400);
+      expect(await response.text()).toBe('');
+      expect(await env.KV.get('code')).toBe('111111');
+    });
     it('responds 200 with correct auth', async () => {
       const response = await SELF.fetch('https://example.com', {
-        body: JSON.stringify({
-          auth: 'secret',
-          code: '123456',
-        }),
+        body: JSON.stringify({ code: '123456' }),
+        headers: { Authorization: 'secret' },
         method: 'PUT',
       });
       expect(response.status).toBe(200);
@@ -81,6 +84,7 @@ describe('temp-code worker', () => {
 
   it('responds 400 with unused methods', async () => {
     const response = await SELF.fetch('https://example.com', {
+      headers: { Authorization: 'secret' },
       method: 'POST',
     });
     expect(response.status).toBe(400);
